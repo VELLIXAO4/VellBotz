@@ -1,44 +1,48 @@
 const express = require("express");
-const bodyParser = require("body-parser");
 const axios = require("axios");
-require("dotenv").config();
+require("dotenv").config(); // Penting buat baca .env
 
 const app = express();
-const port = process.env.PORT || 3000;
+app.use(express.json());
 
-app.use(bodyParser.json());
+// Ambil API key dari environment variable
+const apiKey = process.env.OPENAI_API_KEY;
 
+app.get("/", (req, res) => {
+  res.send("VellBotz AI Server Aktif 🔥");
+});
+
+// Endpoint untuk menerima pesan dari client (misal: Game Guardian)
 app.post("/ask", async (req, res) => {
-  const question = req.body.question;
+  const { message } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: "Pesan tidak boleh kosong!" });
+  }
 
   try {
     const response = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
         model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: "Kamu adalah VellBotz untuk Game Guardian." },
-          { role: "user", content: question },
-        ],
+        messages: [{ role: "user", content: message }],
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
       }
     );
 
-    res.json({ answer: response.data.choices[0].message.content });
+    const reply = response.data.choices[0].message.content;
+    res.json({ reply });
   } catch (error) {
-    res.status(500).json({ error: "Gagal memproses pertanyaan." });
+    res.status(500).json({ error: "Gagal koneksi ke OpenAI", detail: error.message });
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("VellBotz API Ready!");
-});
-
-app.listen(port, () => {
-  console.log(`Server berjalan di http://localhost:${port}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Server jalan di http://localhost:${PORT}`);
 });
